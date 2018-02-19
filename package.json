@@ -1,0 +1,24 @@
+{
+  "name": "hue-energy-usage",
+  "version": "0.0.1",
+  "description": "Keeps track of how much energy usage philips hue light bulbs are using",
+  "main": "app.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Connor-Knabe/hue-energy-usage.git"
+  },
+  "author": "Connor Knabe",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/Connor-Knabe/hue-energy-usage/issues"
+  },
+  "homepage": "https://github.com/Connor-Knabe/hue-energy-usage#readme",
+  "dependencies": {
+    "express": "^4.16.2",
+    "log4js": "^2.5.3",
+    "node-hue-api": "^2.4.2"
+  }
+}
