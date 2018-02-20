@@ -12,11 +12,13 @@ const options = require('./settings/options.js'),
 var logger = log4js.getLogger();
 logger.level = 'debug';
 
-var port = 1234;
+const port = 1234;
 
 http.listen(port, function () {
     logger.info('listening on *:', port);
 });
+
+const costPerKWH = .10;
 
 var HueApi = hue.HueApi,
     lightState = hue.lightState,
@@ -78,8 +80,19 @@ setInterval(() => {
 setInterval(() => {
     logger.debug('lights tracking', lightsTracking);
 
+
     lightsTracking.forEach((light, index) => {
-        logger.debug(`\nLight name: ${light.name}\n Mins on: ${light.lightsOnMins} `)
+        var hoursOn = null;
+        if (light.lightsOnMins > 60) {
+            hoursOn = light.lightsOnMins / 60;
+            //add wattage calculation based on type of bulb
+            var wattMultiplier = 8;
+            logger.debug(`\nLight name: ${light.name}\n Mins on: ${light.lightsOnMins}\n
+                Hours on: ${hoursOn}\n Cost: ${hoursOn * wattMultiplier / 1000 * costPerKWH}`);
+        } else {
+            logger.debug(`\nLight name: ${light.name}\n Mins on: ${light.lightsOnMins} `);
+        }
+
     });
 }, 5 * 60 * 1000);
 
