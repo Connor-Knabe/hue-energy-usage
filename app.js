@@ -7,7 +7,7 @@ const log4js = require('log4js');
 const options = require('./settings/options.js'),
     hue = require('node-hue-api');
 
-// const jsonfile = require('jsonfile')
+const jsonfile = require('jsonfile')
 
 var logger = log4js.getLogger();
 logger.level = 'debug';
@@ -27,19 +27,26 @@ var HueApi = hue.HueApi,
     api = new HueApi(host, username),
     state = lightState.create();
 
-// var file = './data.json'
-// jsonfile.readFile(file, function (err, obj) {
-//     logger.debug(obj);
-
-// });
-
+var file = './data.json'
 var lightsTracking = [];
+
+try {
+    lightsTracking = jsonfile.readFileSync(file);
+} catch (err) {
+    if (err && err.toString().includes("no such file or directory")) {
+        logger.info(`No ${file} file found creating new file`);
+        jsonfile.writeFileSync(file, lightsTracking);
+    } else {
+        logger.error(`Error reading file ${err}`);
+    }
+}
 
 api.lights()
     .then((lights) => {
         var lightString = JSON.stringify(lights, null, 2);
         var lightObj = JSON.parse(lightString);
         logger.info(`App start time`)
+        var startTime = new Date();
         lightObj.lights.forEach((light) => {
             if (light.state.on) {
                 lightsTracking.push({
@@ -80,12 +87,20 @@ setInterval(() => {
 setInterval(() => {
     logger.debug('lights tracking', lightsTracking);
 
+    try {
+        jsonfile.writeFileSync(file, lightsTracking);
+    } catch (error) {
+        logger.error(`Error writing file`, error);
+    }
+
 
     lightsTracking.forEach((light, index) => {
         var hoursOn = null;
         if (light.lightsOnMins > 60) {
             hoursOn = light.lightsOnMins / 60;
             //add wattage calculation based on type of bulb
+            //add at current rate of usage what is cost per month/year
+            //curTime - startTime get mins. Divide total cost by mins. Multiply by mins in month/year
             var wattMultiplier = 8;
             logger.debug(`\nLight name: ${light.name}\n Mins on: ${light.lightsOnMins}\n
                 Hours on: ${hoursOn}\n Cost: ${hoursOn * wattMultiplier / 1000 * costPerKWH}`);
