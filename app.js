@@ -29,12 +29,13 @@ var HueApi = hue.HueApi,
 
 var file = './data.json'
 var lightsTracking = [];
-
+var newFile = false;
 try {
     lightsTracking = jsonfile.readFileSync(file);
 } catch (err) {
     if (err && err.toString().includes("no such file or directory")) {
         logger.info(`No ${file} file found creating new file`);
+        newFile = true;
         jsonfile.writeFileSync(file, lightsTracking);
     } else {
         logger.error(`Error reading file ${err}`);
@@ -48,17 +49,34 @@ api.lights()
         logger.info(`App start time`)
         var startTime = new Date();
         lightObj.lights.forEach((light) => {
-            if (light.state.on) {
-                lightsTracking.push({
-                    "id": light.id, "type": light.type, "name": light.name, "lightsOnMins": 0,
-                    "lightTurnedOnTime": new Date(), "wasOn": true
-                });
+            if (newFile) {
+                //TODO: check type of light then set wattage based on that
+                var bulbWattage = 10;
+
+                if (light.state.on) {
+                    lightsTracking.push({
+                        "id": light.id, "type": light.type, "name": light.name,
+                        "lightsOnMins": 0, "bulbWattage": bulbWattage, "cost": 0,
+                        "lightTurnedOnTime": new Date(), "firstOnTime": new Date(), "wasOn": true
+                    });
+                } else {
+                    lightsTracking.push({
+                        "id": light.id, "type": light.type, "name": light.name,
+                        "lightsOnMins": 0, "bulbWattage": bulbWattage, "cost": 0,
+                        "lightTurnedOnTime": null, "firstOnTime": new Date(), "wasOn": false
+                    });
+                }
             } else {
-                lightsTracking.push({
-                    "id": light.id, "type": light.type, "name": light.name, "lightsOnMins": 0,
-                    "lightTurnedOnTime": null, "wasOn": false
-                });
+                var wasOn = light.state.on;
+                var lightTurnedOnTime = light.state.on ? new Date() : null;
+
+                var lightsTrackingObj = lightsTracking.find(x => x.id === light.id);
+                if (lightsTrackingObj) {
+                    lightsTrackingObj.wasOn = wasOn;
+                    lightsTrackingObj.lightTurnedOnTime = lightTurnedOnTime;
+                }
             }
+
         });
     });
 
@@ -92,25 +110,49 @@ setInterval(() => {
     } catch (error) {
         logger.error(`Error writing file`, error);
     }
-
-
+    var totalCost = 0;
+    var totalHours = 0;
     lightsTracking.forEach((light, index) => {
         var hoursOn = null;
-        if (light.lightsOnMins > 60) {
+        if (light.lightsOnMins > 0) {
             hoursOn = light.lightsOnMins / 60;
-            //add wattage calculation based on type of bulb
+            totalHours += hoursOn;
             //add at current rate of usage what is cost per month/year
             //curTime - startTime get mins. Divide total cost by mins. Multiply by mins in month/year
-            var wattMultiplier = 8;
+
+            var curTime = new Date();
+            //@ts-ignore
+            var diff = Math.abs(curTime - new Date(lightsTracking[index].firstOnTime));
+            var minutesSinceFirstOn = Math.floor((diff / 1000) / 60);
+
+            var cost = hoursOn * light.bulbWattage / 1000 * costPerKWH;
+            var costPerMin = cost / minutesSinceFirstOn;
+            var costPerWeek = roundDecimals(costPerMin * 10080);
+            var costPerMonth = roundDecimals(costPerMin * 43800);
+            var costPerYear = roundDecimals(costPerMin * 525600);
+
+            cost = Math.round(cost * 100) / 100;
+            light.cost = cost;
+            totalCost += cost;
+
+
             logger.debug(`\nLight name: ${light.name}\n Mins on: ${light.lightsOnMins}\n
-                Hours on: ${hoursOn}\n Cost: ${hoursOn * wattMultiplier / 1000 * costPerKWH}`);
+                Hours on: ${roundDecimals(hoursOn)}\n Cost so far: $${cost}
+                \n Cost per week: $${costPerWeek}\n Cost per month: $${costPerMonth}
+                \n Cost per year: $${costPerYear}`);
         } else {
             logger.debug(`\nLight name: ${light.name}\n Mins on: ${light.lightsOnMins} `);
         }
 
     });
+    logger.debug(`Total hours on: ${totalHours} \nTotal cost: ${totalCost}`);
+
 }, 5 * 60 * 1000);
 
+
+function roundDecimals(number) {
+    return Math.round(number * 100) / 100;
+}
 function isLightOn(lightNumber) {
     return new Promise((resolve, reject) => {
         api.lightStatus(lightNumber)
