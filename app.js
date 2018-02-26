@@ -47,12 +47,21 @@ api.lights()
         var lightString = JSON.stringify(lights, null, 2);
         var lightObj = JSON.parse(lightString);
         logger.info(`App start time`)
+        console.log('lights',lights);
+        console.log('light obj',lightObj);
+
         var startTime = new Date();
         lightObj.lights.forEach((light) => {
             if (newFile) {
                 //TODO: check type of light then set wattage based on that
                 var bulbWattage = 10;
-
+                if(light.modelid==="LST002"){
+	                bulbWattage = 20;
+                } else if(light.modelid==="LTW012" || light.modelid==="LCT001"){
+	                bulbWattage = 6;
+					bulbWattage = 6;
+                } 
+                
                 if (light.state.on) {
                     lightsTracking.push({
                         "id": light.id, "type": light.type, "name": light.name,
@@ -112,6 +121,7 @@ setInterval(() => {
     }
     var totalCost = 0;
     var totalHours = 0;
+    var totalKwh = 0;
     lightsTracking.forEach((light, index) => {
         var hoursOn = null;
         if (light.lightsOnMins > 0) {
@@ -125,34 +135,59 @@ setInterval(() => {
             var diff = Math.abs(curTime - new Date(lightsTracking[index].firstOnTime));
             var minutesSinceFirstOn = Math.floor((diff / 1000) / 60);
 
-            var cost = hoursOn * light.bulbWattage / 1000 * costPerKWH;
+            //TODO refactor costPerX calculation
+            var kwh =  getKWH(hoursOn,light.bulbWattage);
+            var cost = kwh * costPerKWH;
             var costPerMin = cost / minutesSinceFirstOn;
             var costPerWeek = roundDecimals(costPerMin * 10080);
             var costPerMonth = roundDecimals(costPerMin * 43800);
             var costPerYear = roundDecimals(costPerMin * 525600);
+            totalCost += cost;
+			totalKwh += kwh;
 
             cost = Math.round(cost * 100) / 100;
             light.cost = cost;
-            totalCost += cost;
-
-
-            logger.debug(`\nLight name: ${light.name}\n Mins on: ${light.lightsOnMins}\n
-                Hours on: ${roundDecimals(hoursOn)}\n Cost so far: $${cost}
-                \n Cost per week: $${costPerWeek}\n Cost per month: $${costPerMonth}
-                \n Cost per year: $${costPerYear}`);
+            logger.debug(`\nLight name: ${light.name}\nKWH: ${kwh} \nMins on: ${light.lightsOnMins}\nHours on: ${roundDecimals(hoursOn)}\nCost so far: $${cost}\nCost per week: $${costPerWeek}\nCost per month: $${costPerMonth}\nCost per year: $${costPerYear}`);
         } else {
-            logger.debug(`\nLight name: ${light.name}\n Mins on: ${light.lightsOnMins} `);
+            logger.debug(`\nLight name: ${light.name}\nMins on: ${light.lightsOnMins} `);
         }
 
     });
-    logger.debug(`Total hours on: ${totalHours} \nTotal cost: ${totalCost}`);
-
-}, 5 * 60 * 1000);
+    logTotalCosts(totalKwh,totalCost, totalHours, lightsTracking[0].firstOnTime);
+}, 1 * 60 * 1000);
 
 
 function roundDecimals(number) {
     return Math.round(number * 100) / 100;
 }
+
+function getKWH(hours, wattage){
+	return hours * wattage / 1000;	
+}
+
+function logTotalCosts(kwh, cost, hoursOn, firstOnTime) {
+    //TODO refactor costPerX calculation
+    var curTime = new Date();
+
+    //@ts-ignore
+    var diff = Math.abs(curTime - new Date(firstOnTime));
+    var minutesSinceFirstOn = Math.floor((diff / 1000) / 60);
+    var costPerMin = cost / minutesSinceFirstOn;
+    var costPerWeek = roundDecimals(costPerMin * 10080);
+    var costPerMonth = roundDecimals(costPerMin * 43800);
+    var costPerYear = roundDecimals(costPerMin * 525600);
+
+    var kwhPerMin = kwh / minutesSinceFirstOn;
+    var kwhPerWeek = roundDecimals(kwhPerMin * 10080);
+    var kwhPerMonth = roundDecimals(kwhPerMin * 43800);
+    var kwhPerYear = roundDecimals(kwhPerMin * 525600);
+
+
+    logger.debug(`\nTotal hours on: ${roundDecimals(hoursOn)}\nTotal cost: $${cost}\nCost per week: $${costPerWeek}\nCost per month: $${costPerMonth}\nCost per year: $${costPerYear}`);
+    logger.debug(`\nTotal hours on: ${roundDecimals(hoursOn)}\nTotal KWH: ${roundDecimals(kwh)}\nKWH per week: ${roundDecimals(kwhPerWeek)}\nKWH per month: ${roundDecimals(kwhPerMonth)}\nKWH per year: ${roundDecimals(kwhPerYear)}`);
+
+}
+
 function isLightOn(lightNumber) {
     return new Promise((resolve, reject) => {
         api.lightStatus(lightNumber)
