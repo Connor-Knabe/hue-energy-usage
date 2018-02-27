@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>hue-energy-usage</title>
+
+    <style>
+        html,
+        body {
+            height: 100%;
+        }
+
+        html {
+            display: table;
+            margin: auto;
+        }
+
+        body {
+            display: table-cell;
+        }
+    </style>
+</head>
+
+
+
+<body>
+    <h1>Hue Energy Usage</h1>
+    <a href="https://github.com/Connor-Knabe/hue-energy-usage">https://github.com/Connor-Knabe/hue-energy-usage</a>
+
+    <h3>Total Hours On:
+        <%= totalUsage.hoursOn %>
+    </h3>
+    <h3>Total Cost: $
+        <%= totalUsage.cost %>
+    </h3>
+    <h3>Total KWH:
+        <%= totalUsage.kwh %>
+    </h3>
+    <br>
+    <h3>Cost Per Week: $
+        <%= totalUsage.costPerWeek %>
+    </h3>
+    <h3>Cost Per Month: $
+        <%= totalUsage.costPerMonth %>
+    </h3>
+    <h3>Cost Per Year: $
+        <%= totalUsage.costPerYear %>
+    </h3>
+    <br>
+
+    <h3>KWH Per Week:
+        <%= totalUsage.kwhPerWeek %>
+    </h3>
+    <h3>KWH PerMonth:
+        <%= totalUsage.kwhPerMonth %>
+    </h3>
+    <h3>KWH Per Year:
+        <%= totalUsage.kwhPerYear %>
+    </h3>
+
+</body>
+
+</html>

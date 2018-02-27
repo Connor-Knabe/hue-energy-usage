@@ -29,6 +29,7 @@ var HueApi = hue.HueApi,
 
 var file = './data.json'
 var lightsTracking = [];
+var totalUsage = {};
 var newFile = false;
 try {
     lightsTracking = jsonfile.readFileSync(file);
@@ -41,27 +42,24 @@ try {
         logger.error(`Error reading file ${err}`);
     }
 }
-
+calculateUsageAndLog(false);
 api.lights()
     .then((lights) => {
         var lightString = JSON.stringify(lights, null, 2);
         var lightObj = JSON.parse(lightString);
         logger.info(`App start time`)
-        console.log('lights',lights);
-        console.log('light obj',lightObj);
-
         var startTime = new Date();
         lightObj.lights.forEach((light) => {
             if (newFile) {
                 //TODO: check type of light then set wattage based on that
                 var bulbWattage = 10;
-                if(light.modelid==="LST002"){
-	                bulbWattage = 20;
-                } else if(light.modelid==="LTW012" || light.modelid==="LCT001"){
-	                bulbWattage = 6;
-					bulbWattage = 6;
-                } 
-                
+                if (light.modelid === "LST002") {
+                    bulbWattage = 20;
+                } else if (light.modelid === "LTW012" || light.modelid === "LCT001") {
+                    bulbWattage = 6;
+                    bulbWattage = 6;
+                }
+
                 if (light.state.on) {
                     lightsTracking.push({
                         "id": light.id, "type": light.type, "name": light.name,
@@ -109,63 +107,74 @@ setInterval(() => {
             }
         });
     });
-}, 1 * 60 * 1000);
+}, 5 * 60 * 1000);
 
 setInterval(() => {
-    logger.debug('lights tracking', lightsTracking);
+    calculateUsageAndLog(true);
+}, 15 * 60 * 1000);
 
-    try {
-        jsonfile.writeFileSync(file, lightsTracking);
-    } catch (error) {
-        logger.error(`Error writing file`, error);
-    }
-    var totalCost = 0;
-    var totalHours = 0;
-    var totalKwh = 0;
-    lightsTracking.forEach((light, index) => {
-        var hoursOn = null;
-        if (light.lightsOnMins > 0) {
-            hoursOn = light.lightsOnMins / 60;
-            totalHours += hoursOn;
-            //add at current rate of usage what is cost per month/year
-            //curTime - startTime get mins. Divide total cost by mins. Multiply by mins in month/year
-
-            var curTime = new Date();
-            //@ts-ignore
-            var diff = Math.abs(curTime - new Date(lightsTracking[index].firstOnTime));
-            var minutesSinceFirstOn = Math.floor((diff / 1000) / 60);
-
-            //TODO refactor costPerX calculation
-            var kwh =  getKWH(hoursOn,light.bulbWattage);
-            var cost = kwh * costPerKWH;
-            var costPerMin = cost / minutesSinceFirstOn;
-            var costPerWeek = roundDecimals(costPerMin * 10080);
-            var costPerMonth = roundDecimals(costPerMin * 43800);
-            var costPerYear = roundDecimals(costPerMin * 525600);
-            totalCost += cost;
-			totalKwh += kwh;
-
-            cost = Math.round(cost * 100) / 100;
-            light.cost = cost;
-            logger.debug(`\nLight name: ${light.name}\nKWH: ${kwh} \nMins on: ${light.lightsOnMins}\nHours on: ${roundDecimals(hoursOn)}\nCost so far: $${cost}\nCost per week: $${costPerWeek}\nCost per month: $${costPerMonth}\nCost per year: $${costPerYear}`);
-        } else {
-            logger.debug(`\nLight name: ${light.name}\nMins on: ${light.lightsOnMins} `);
+function calculateUsageAndLog(shouldLog) {
+    return new Promise((resolve, reject) => {
+        if (shouldLog) {
+            logger.debug('lights tracking', lightsTracking);
         }
 
-    });
-    logTotalCosts(totalKwh,totalCost, totalHours, lightsTracking[0].firstOnTime);
-}, 1 * 60 * 1000);
 
+        try {
+            jsonfile.writeFileSync(file, lightsTracking);
+        } catch (error) {
+            logger.error(`Error writing file`, error);
+        }
+        var totalCost = 0;
+        var totalHours = 0;
+        var totalKwh = 0;
+        lightsTracking.forEach((light, index) => {
+            var hoursOn = null;
+            if (light.lightsOnMins > 0) {
+                hoursOn = light.lightsOnMins / 60;
+                totalHours += hoursOn;
+                //add at current rate of usage what is cost per month/year
+                //curTime - startTime get mins. Divide total cost by mins. Multiply by mins in month/year
+
+                var curTime = new Date();
+                //@ts-ignore
+                var diff = Math.abs(curTime - new Date(lightsTracking[index].firstOnTime));
+                var minutesSinceFirstOn = Math.floor((diff / 1000) / 60);
+
+                //TODO refactor costPerX calculation
+                var kwh = getKWH(hoursOn, light.bulbWattage);
+                var cost = kwh * costPerKWH;
+                var costPerMin = cost / minutesSinceFirstOn;
+                var costPerWeek = roundDecimals(costPerMin * 10080);
+                var costPerMonth = roundDecimals(costPerMin * 43800);
+                var costPerYear = roundDecimals(costPerMin * 525600);
+                totalCost += cost;
+                totalKwh += kwh;
+
+                cost = Math.round(cost * 100) / 100;
+                light.cost = cost;
+                logger.debug(`\nLight name: ${light.name}\nKWH: ${kwh} \nMins on: ${light.lightsOnMins}\nHours on: ${roundDecimals(hoursOn)}\nCost so far: $${cost}\nCost per week: $${costPerWeek}\nCost per month: $${costPerMonth}\nCost per year: $${costPerYear}`);
+            } else {
+                logger.debug(`\nLight name: ${light.name}\nMins on: ${light.lightsOnMins} `);
+            }
+
+        });
+        calculateTotalUsage(totalKwh, totalCost, totalHours, lightsTracking[0].firstOnTime, shouldLog);
+
+        resolve();
+    });
+
+}
 
 function roundDecimals(number) {
     return Math.round(number * 100) / 100;
 }
 
-function getKWH(hours, wattage){
-	return hours * wattage / 1000;	
+function getKWH(hours, wattage) {
+    return hours * wattage / 1000;
 }
 
-function logTotalCosts(kwh, cost, hoursOn, firstOnTime) {
+function calculateTotalUsage(kwh, cost, hoursOn, firstOnTime, shouldLog) {
     //TODO refactor costPerX calculation
     var curTime = new Date();
 
@@ -181,10 +190,23 @@ function logTotalCosts(kwh, cost, hoursOn, firstOnTime) {
     var kwhPerWeek = roundDecimals(kwhPerMin * 10080);
     var kwhPerMonth = roundDecimals(kwhPerMin * 43800);
     var kwhPerYear = roundDecimals(kwhPerMin * 525600);
+    //TODO call this on first app load
+    totalUsage = {
+        "hoursOn": hoursOn,
+        "cost": roundDecimals(cost),
+        "kwh": roundDecimals(kwh),
+        "costPerWeek": costPerWeek,
+        "costPerMonth": costPerMonth,
+        "costPerYear": costPerYear,
+        "kwhPerWeek": kwhPerWeek,
+        "kwhPerMonth": kwhPerMonth,
+        "kwhPerYear": kwhPerYear
+    }
+    if (shouldLog) {
+        logger.debug(`\nTotal hours on: ${roundDecimals(hoursOn)}\nTotal cost: $${cost}\nCost per week: $${costPerWeek}\nCost per month: $${costPerMonth}\nCost per year: $${costPerYear}`);
+        logger.debug(`\nTotal hours on: ${roundDecimals(hoursOn)}\nTotal KWH: ${roundDecimals(kwh)}\nKWH per week: ${roundDecimals(kwhPerWeek)}\nKWH per month: ${roundDecimals(kwhPerMonth)}\nKWH per year: ${roundDecimals(kwhPerYear)}`);
 
-
-    logger.debug(`\nTotal hours on: ${roundDecimals(hoursOn)}\nTotal cost: $${cost}\nCost per week: $${costPerWeek}\nCost per month: $${costPerMonth}\nCost per year: $${costPerYear}`);
-    logger.debug(`\nTotal hours on: ${roundDecimals(hoursOn)}\nTotal KWH: ${roundDecimals(kwh)}\nKWH per week: ${roundDecimals(kwhPerWeek)}\nKWH per month: ${roundDecimals(kwhPerMonth)}\nKWH per year: ${roundDecimals(kwhPerYear)}`);
+    }
 
 }
 
@@ -197,4 +219,10 @@ function isLightOn(lightNumber) {
     });
 }
 
-
+app.get('/', (req, res) => {
+    calculateUsageAndLog(false).then(() => {
+        logger.debug('usage');
+        logger.debug(totalUsage);
+        res.render('index.ejs', { totalUsage: totalUsage, lightsTracking: JSON.stringify(lightsTracking, null, 4) });
+    });
+});
