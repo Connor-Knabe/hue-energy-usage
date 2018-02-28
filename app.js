@@ -119,7 +119,6 @@ function calculateUsageAndLog(shouldLog) {
             logger.debug('lights tracking', lightsTracking);
         }
 
-
         try {
             jsonfile.writeFileSync(file, lightsTracking);
         } catch (error) {
@@ -192,7 +191,7 @@ function calculateTotalUsage(kwh, cost, hoursOn, firstOnTime, shouldLog) {
     var kwhPerYear = roundDecimals(kwhPerMin * 525600);
     //TODO call this on first app load
     totalUsage = {
-        "hoursOn": hoursOn,
+        "hoursOn": roundDecimals(hoursOn),
         "cost": roundDecimals(cost),
         "kwh": roundDecimals(kwh),
         "costPerWeek": costPerWeek,
@@ -223,6 +222,6 @@ app.get('/', (req, res) => {
     calculateUsageAndLog(false).then(() => {
         logger.debug('usage');
         logger.debug(totalUsage);
-        res.render('index.ejs', { totalUsage: totalUsage, lightsTracking: JSON.stringify(lightsTracking, null, 4) });
+        res.render('index.ejs', { totalUsage: totalUsage, lightsTracking: lightsTracking });
     });
 });

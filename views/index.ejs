@@ -61,6 +61,27 @@
         <%= totalUsage.kwhPerYear %>
     </h3>
 
+    <table>
+        <tr>
+            <td>
+                Light name
+            </td>
+            <td>Light is on</td>
+        </tr>
+        <% for(var i=0; i < lightsTracking.length; i++) { %>
+            <tr>
+                <td>
+                    <%= lightsTracking[i].name %>
+                </td>
+                <td>
+                    <%= lightsTracking[i].wasOn %>
+                </td>
+
+            </tr>
+            <% } %>
+    </table>
+    <br>
+    <br>
 </body>
 
 </html>
