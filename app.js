@@ -42,6 +42,7 @@ try {
         logger.error(`Error reading file ${err}`);
     }
 }
+
 calculateUsageAndLog(false);
 api.lights()
     .then((lights) => {
@@ -51,12 +52,39 @@ api.lights()
         var startTime = new Date();
         lightObj.lights.forEach((light) => {
             if (newFile) {
-                //TODO: check type of light then set wattage based on that
                 var bulbWattage = 10;
+
+
+                //If you don't have smart bulbs in all of your rooms you can use this to calculate addional usage
+                // if (light.name === "Garage 1") {
+                //     //testing batch of lights for kitchen table with 1 smart bulb
+                //     bulbWattage = 6 * 8;
+                // } else if (light.name === "Garage 2") {
+                //     //accounting for garage light
+                //     bulbWattage = 20;
+                // } else if (light.name === "Lamp 1") {
+                //     //testing bathroom lights
+                //     bulbWattage = 2 * 8;
+                // } else if (light.name === "Lamp 2") {
+                //     //accounting for missing lamp light
+                //     bulbWattage = 20;
+                // } else if (light.name === "LR 1") {
+                //     //testing flood bulbs in kitchen
+                //     bulbWattage = 7 * 10;
+                // } else if (light.name === "LR 2") {
+                //     //accounting for missing LR light
+                //     bulbWattage = 24;
+                // } else if (light.name === "BR 1") {
+                //     //testing living room fan lights
+                //     bulbWattage = 4 * 8;
+                // } else if (light.name === "BR 2") {
+                //     //accounting for missing BR light
+                //     bulbWattage = 12;
+                // }
+
                 if (light.modelid === "LST002") {
                     bulbWattage = 20;
                 } else if (light.modelid === "LTW012" || light.modelid === "LCT001") {
-                    bulbWattage = 6;
                     bulbWattage = 6;
                 }
 
@@ -64,13 +92,15 @@ api.lights()
                     lightsTracking.push({
                         "id": light.id, "type": light.type, "name": light.name,
                         "lightsOnMins": 0, "bulbWattage": bulbWattage, "cost": 0,
-                        "lightTurnedOnTime": new Date(), "firstOnTime": new Date(), "wasOn": true
+                        "lightTurnedOnTime": new Date(), "firstOnTime": new Date(),
+                        "modelId": light.modelid, "wasOn": true
                     });
                 } else {
                     lightsTracking.push({
                         "id": light.id, "type": light.type, "name": light.name,
                         "lightsOnMins": 0, "bulbWattage": bulbWattage, "cost": 0,
-                        "lightTurnedOnTime": null, "firstOnTime": new Date(), "wasOn": false
+                        "lightTurnedOnTime": null, "firstOnTime": new Date(),
+                        "modelId": light.modelid, "wasOn": false
                     });
                 }
             } else {
@@ -86,6 +116,8 @@ api.lights()
 
         });
     });
+    
+    
 
 
 setInterval(() => {
@@ -107,7 +139,7 @@ setInterval(() => {
             }
         });
     });
-}, 5 * 60 * 1000);
+}, 1 * 60 * 1000);
 
 setInterval(() => {
     calculateUsageAndLog(true);
@@ -205,7 +237,6 @@ function calculateTotalUsage(kwh, cost, hoursOn, firstOnTime, shouldLog) {
     if (shouldLog) {
         logger.debug(`\nTotal hours on: ${roundDecimals(hoursOn)}\nTotal cost: $${cost}\nCost per week: $${costPerWeek}\nCost per month: $${costPerMonth}\nCost per year: $${costPerYear}`);
         logger.debug(`\nTotal hours on: ${roundDecimals(hoursOn)}\nTotal KWH: ${roundDecimals(kwh)}\nKWH per week: ${roundDecimals(kwhPerWeek)}\nKWH per month: ${roundDecimals(kwhPerMonth)}\nKWH per year: ${roundDecimals(kwhPerYear)}`);
-
     }
 
 }
@@ -214,10 +245,15 @@ function isLightOn(lightNumber) {
     return new Promise((resolve, reject) => {
         api.lightStatus(lightNumber)
             .then((status) => {
-                resolve(status.state.on);
+                logger.debug(`Light #${lightNumber} is responding. State is: ${status.state.on}`)
+                resolve(status.state.on && status.state.reachable);
+            }).catch((err) => {
+                logger.error(`Issue checking if light #${lightNumber} is on. With error: ${err}`)
+                resolve(false);
             });
     });
 }
+
 
 app.get('/', (req, res) => {
     calculateUsageAndLog(false).then(() => {
