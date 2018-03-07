@@ -116,8 +116,8 @@ api.lights()
 
         });
     });
-    
-    
+
+
 
 
 setInterval(() => {
@@ -170,12 +170,12 @@ function calculateUsageAndLog(shouldLog) {
                 var curTime = new Date();
                 //@ts-ignore
                 var diff = Math.abs(curTime - new Date(lightsTracking[index].firstOnTime));
-                var hoursSinceFirstOn = Math.floor((diff / 1000) / 60);
+                var minsSinceFirstOn = Math.floor((diff / 1000) / 60);
 
                 //TODO refactor costPerX calculation
                 var kwh = getKWH(hoursOn, light.bulbWattage);
                 var cost = kwh * costPerKWH;
-                var costPerMin = cost / hoursSinceFirstOn;
+                var costPerMin = cost / minsSinceFirstOn;
                 var costPerWeek = roundDecimals(costPerMin * 10080);
                 var costPerMonth = roundDecimals(costPerMin * 43800);
                 var costPerYear = roundDecimals(costPerMin * 525600);
@@ -211,19 +211,19 @@ function calculateTotalUsage(kwh, cost, hoursOn, firstOnTime, shouldLog) {
 
     //@ts-ignore
     var diff = Math.abs(curTime - new Date(firstOnTime));
-    var hoursSinceFirstOn = Math.floor((diff / 1000) / 60);
-    var costPerMin = cost / hoursSinceFirstOn;
+    var minsSinceFirstOn = Math.floor((diff / 1000) / 60);
+    var costPerMin = cost / minsSinceFirstOn;
     var costPerWeek = roundDecimals(costPerMin * 10080);
     var costPerMonth = roundDecimals(costPerMin * 43800);
     var costPerYear = roundDecimals(costPerMin * 525600);
 
-    var kwhPerMin = kwh / hoursSinceFirstOn;
+    var kwhPerMin = kwh / minsSinceFirstOn;
     var kwhPerWeek = roundDecimals(kwhPerMin * 10080);
     var kwhPerMonth = roundDecimals(kwhPerMin * 43800);
     var kwhPerYear = roundDecimals(kwhPerMin * 525600);
     //TODO call this on first app load
     totalUsage = {
-        "totalHours": roundDecimals(hoursSinceFirstOn),
+        "totalHours": roundDecimals(minsSinceFirstOn * 60),
         "hoursOn": roundDecimals(hoursOn),
         "cost": roundDecimals(cost),
         "kwh": roundDecimals(kwh),
