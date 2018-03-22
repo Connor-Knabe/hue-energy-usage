@@ -170,8 +170,6 @@ function calculateUsageAndLog(shouldLog) {
             if (light.lightsOnMins > 0) {
                 hoursOn = light.lightsOnMins / 60;
                 totalHours += hoursOn;
-                //add at current rate of usage what is cost per month/year
-                //curTime - startTime get mins. Divide total cost by mins. Multiply by mins in month/year
 
                 var curTime = new Date();
                 //@ts-ignore
@@ -228,6 +226,7 @@ function calculateTotalUsage(kwh, cost, hoursOn, firstOnTime, shouldLog) {
     //TODO call this on first app load
     totalUsage = {
         totalHours: roundDecimals(minsSinceFirstOn / 60),
+        totalDays: roundDecimals(minsSinceFirstOn / 60 / 24),
         hoursOn: roundDecimals(hoursOn),
         cost: roundDecimals(cost),
         kwh: roundDecimals(kwh),
