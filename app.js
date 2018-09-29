@@ -265,3 +265,7 @@ app.get('/', (req, res) => {
         res.render('index.ejs', { totalUsage: totalUsage, lightsTracking: lightsTracking });
     });
 });
+
+app.get('/health', (req, res) => {
+	res.send('OK');
+});
