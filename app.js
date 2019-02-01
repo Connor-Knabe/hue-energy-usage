@@ -10,7 +10,7 @@ const options = require('./settings/options.js'),
 const jsonfile = require('jsonfile');
 
 var logger = log4js.getLogger();
-logger.level = 'debug';
+logger.level = 'info';
 
 const port = 1234;
 
@@ -200,7 +200,9 @@ function calculateUsageAndLog(shouldLog) {
 }
 
 function roundDecimals(number) {
-    return Math.round(number * 100) / 100;
+    //return Math.round(number * 100) / 100;
+	console.log(Math.round(number*100));
+	return parseFloat(number).toFixed(2);
 }
 
 function getKWH(hours, wattage) {
