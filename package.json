@@ -19,7 +19,7 @@
   },
   "homepage": "https://github.com/Connor-Knabe/hue-energy-usage#readme",
   "dependencies": {
-    "ejs": "^2.5.7",
+    "ejs": "^3.1.6",
     "express": "^4.16.2",
     "jsonfile": "^4.0.0",
     "log4js": "^3.0.0",
